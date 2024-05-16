@@ -2,9 +2,9 @@ from django.contrib.auth.models import User
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, OutstandingToken
 from rest_framework.exceptions import NotAuthenticated
 
 
@@ -45,3 +45,33 @@ class UserAPI(APIView):
         return Response({
             "error": "Both username and password must be provided."
         })
+    
+
+    
+    
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout(request):
+    refresh_token = request.data.get('refresh_token')
+
+    if refresh_token:
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({'message': 'Successfully logged out.'}, status=200)
+        except Exception as e:
+            return Response({'error': 'Invalid token.'}, status=400)
+    else:
+        return Response({'error': 'Refresh token is required.'}, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_all(request):
+    user = request.user
+    tokens = OutstandingToken.objects.filter(user=user)
+    for token in tokens:
+        token.blacklist()
+    return Response({'message': 'Successfully logged out from all sessions.'}, status=200)
+
+
